@@ -1,0 +1,20 @@
+{
+  "name": "disney_reservations",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/inquirer": "^7.3.1",
+    "@types/node": "^14.6.0",
+    "axios": "^0.20.0",
+    "dotenv": "^8.2.0",
+    "inquirer": "^7.3.3",
+    "moment": "^2.27.0",
+    "node-html-parser": "^1.2.20"
+  }
+}
