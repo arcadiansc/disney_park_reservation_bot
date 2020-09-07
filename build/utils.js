@@ -39,7 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.selectOptions = exports.getParksUrl = exports.createGuestUrl = exports.availableDatesUrl = exports.phpSessionUrl = exports.formLoginBody = exports.formGetSegmentUrl = exports.formAcceptOfferUrl = exports.formCheckOfferUrl = exports.formCheckReservationsUrl = exports.PARKS = exports.loginUrl = void 0;
+exports.selectOptions = exports.getParksUrl = exports.createGuestUrl = exports.availableDatesUrl = exports.phpSessionUrl = exports.formLoginBody = exports.formGetSegmentUrl = exports.formAcceptOfferUrl = exports.formCheckOfferUrl = exports.formCheckReservationsUrl = exports.refreshTokenUrl = exports.PARKS = exports.loginUrl = void 0;
 var inquirer_1 = __importDefault(require("inquirer"));
 exports.loginUrl = "https://disneyworld.disney.go.com/login/";
 exports.PARKS = [
@@ -48,6 +48,7 @@ exports.PARKS = [
     { id: "80007998", name: "Hollywood Studios" },
     { id: "80007823", name: "Animal Kingdom" },
 ];
+exports.refreshTokenUrl = "https://disneyworld.disney.go.com/authentication/get-client-token/";
 function formCheckReservationsUrl(guests, date, parkId, segmentId) {
     var guestString = createGuestString(guests);
     return "https://disneyworld.disney.go.com/vas/api/v1/availability/dates/" + date + "/parks/" + parkId + "/reservations/" + segmentId + "?guestXids=" + guestString + "&conflictingEntitlementIds=&replacementEntitlementIds=";
