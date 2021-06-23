@@ -2,6 +2,9 @@ export interface IApiOptions {
   email: string;
   password: string;
   date: string;
+  accessToken: string;
+  refreshToken: string;
+  userId: string;
 }
 
 export interface ISessionAndCSRF {

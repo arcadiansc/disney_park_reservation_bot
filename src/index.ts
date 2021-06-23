@@ -2,6 +2,28 @@ import dotEnv from "dotenv";
 dotEnv.config();
 import apiClass from "./api";
 import { ISessionAndCSRF, IGuest, IApiOptions } from "./interfaces";
+import Puppeteer from "./Puppeteer";
+import {checkForCachedTokens, loginUrl} from "./utils";
+
+async function validateTokens(
+  accessToken: string,
+  userId: string
+): Promise<boolean> {
+  const API = new apiClass({
+    email: "",
+    password: "",
+    date: "",
+    accessToken,
+    refreshToken: "",
+    userId
+  });
+  try {
+    await API.getGuests();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
 
 async function main(): Promise<void> {
   const email: string | undefined = process.env.email;
@@ -16,12 +38,38 @@ async function main(): Promise<void> {
     throw new Error("No date passed");
   }
 
-  const API = new apiClass({ email, password, date });
+
+  const puppet = new Puppeteer(email, password);
+  let accessToken = "";
+  let refreshToken = "";
+  let userId = "";
 
   try {
+    const tokensCached = checkForCachedTokens(email);
+    console.log("tokensCached: ", tokensCached);
+
+    let getNewTokens = true;
+
+    if (tokensCached && typeof tokensCached === 'object') {
+      const validToken = validateTokens(tokensCached.accessToken, tokensCached.userId);
+      if (validToken) {
+        accessToken = tokensCached.accessToken;
+        refreshToken = tokensCached.refreshToken;
+        userId = tokensCached.userId;
+        getNewTokens = false;
+      }
+    }
+
+   if (getNewTokens) {
+      const newTokens = await puppet.start(loginUrl);
+      accessToken = newTokens.accessToken;
+      refreshToken = newTokens.refreshToken;
+      userId = newTokens.userId;
+    }
+
+
+    const API = new apiClass({ email, password, date, accessToken, refreshToken, userId });
     await API.getAvailableDates();
-    const { cookie, csrf }: ISessionAndCSRF = await API.getSessionAndCsrf();
-    await API.login(cookie, csrf);
     await API.getGuests();
     await API.askForGuestsToUse();
     await API.checkForParkAvailability();
@@ -32,7 +80,7 @@ async function main(): Promise<void> {
   }
 }
 
-function sleep(timeout: number) {
+function sleep(timeout: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(() => resolve(), timeout);
   });

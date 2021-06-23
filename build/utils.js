@@ -35,13 +35,34 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.selectOptions = exports.getParksUrl = exports.createGuestUrl = exports.availableDatesUrl = exports.phpSessionUrl = exports.formLoginBody = exports.formGetSegmentUrl = exports.formAcceptOfferUrl = exports.formCheckOfferUrl = exports.formCheckReservationsUrl = exports.refreshTokenUrl = exports.PARKS = exports.loginUrl = void 0;
+exports.checkForCachedTokens = exports.cacheTokens = exports.selectOptions = exports.getParksUrl = exports.createGuestUrl = exports.availableDatesUrl = exports.formGetSegmentUrl = exports.formAcceptOfferUrl = exports.formCheckOfferUrl = exports.formCheckReservationsUrl = exports.refreshTokenUrl = exports.PARKS = exports.loginUrl = void 0;
 var inquirer_1 = __importDefault(require("inquirer"));
+var fs_1 = __importDefault(require("fs"));
+var moment_1 = __importDefault(require("moment"));
 exports.loginUrl = "https://disneyworld.disney.go.com/login/";
+function getCorrectDateFormat(date) {
+    return moment_1.default(new Date(date)).format('YYYY-MM-DD');
+}
 exports.PARKS = [
     { id: "80007944", name: "Magic Kingdom" },
     { id: "80007838", name: "Epcot" },
@@ -51,7 +72,7 @@ exports.PARKS = [
 exports.refreshTokenUrl = "https://disneyworld.disney.go.com/authentication/get-client-token/";
 function formCheckReservationsUrl(guests, date, parkId, segmentId) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/availability/dates/" + date + "/parks/" + parkId + "/reservations/" + segmentId + "?guestXids=" + guestString + "&conflictingEntitlementIds=&replacementEntitlementIds=";
+    return "https://disneyworld.disney.go.com/vas/api/v1/availability/dates/" + getCorrectDateFormat(date) + "/parks/" + parkId + "/reservations/" + segmentId + "?guestXids=" + guestString + "&conflictingEntitlementIds=&replacementEntitlementIds=";
 }
 exports.formCheckReservationsUrl = formCheckReservationsUrl;
 function formCheckOfferUrl(offerId) {
@@ -64,15 +85,9 @@ function formAcceptOfferUrl(userId) {
 exports.formAcceptOfferUrl = formAcceptOfferUrl;
 function formGetSegmentUrl(guests, date, parkId) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/" + date + "/parks/" + parkId + "/segments?guestXids=" + guestString;
+    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/" + getCorrectDateFormat(date) + "/parks/" + parkId + "/segments?guestXids=" + guestString;
 }
 exports.formGetSegmentUrl = formGetSegmentUrl;
-function formLoginBody(email, password, csrf) {
-    var body = "pep_csrf=" + encodeURIComponent(csrf) + "&returnUrl=&username=" + encodeURIComponent(email) + "&password=" + encodeURIComponent(password) + "&rememberMe=0&submit=";
-    return body;
-}
-exports.formLoginBody = formLoginBody;
-exports.phpSessionUrl = "https://disneyworld.disney.go.com/login/?appRedirect=/";
 exports.availableDatesUrl = "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates";
 function createGuestUrl(userId) {
     return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/users/%7B" + userId + "%7D/guests";
@@ -90,9 +105,10 @@ function createGuestString(guests) {
 }
 function getParksUrl(date, guests) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/" + date + "/parks?guestXids=" + guestString;
+    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/" + getCorrectDateFormat(date) + "/parks?guestXids=" + guestString;
 }
 exports.getParksUrl = getParksUrl;
+// https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/2021-06-22/parks?guestXids=F92D07DD-AF51-867D-DB0F-88C473006FFF,1C86E7DC-48C4-BE9A-2687-17AF22BB0B5E
 function selectOptions(message, choices, name) {
     return __awaiter(this, void 0, void 0, function () {
         var answer;
@@ -116,3 +132,27 @@ function selectOptions(message, choices, name) {
     });
 }
 exports.selectOptions = selectOptions;
+function cacheTokens(email, accessToken, refreshToken, userId) {
+    var cacheString = accessToken + "|" + refreshToken + "|" + userId;
+    try {
+        fs_1.default.writeFileSync("./tokens/" + email, cacheString);
+    }
+    catch (e) {
+        console.log("Please make a tokens directory in the root of this project to continue");
+        throw e;
+    }
+}
+exports.cacheTokens = cacheTokens;
+function checkForCachedTokens(email) {
+    try {
+        var tokens = fs_1.default.readFileSync("./tokens/" + email, "utf8");
+        if (!tokens)
+            throw new Error("No tokens were cached");
+        var _a = __read(tokens.split('|'), 3), accessToken = _a[0], refreshToken = _a[1], userId = _a[2];
+        return { accessToken: accessToken, refreshToken: refreshToken, userId: userId };
+    }
+    catch (e) {
+        return false;
+    }
+}
+exports.checkForCachedTokens = checkForCachedTokens;

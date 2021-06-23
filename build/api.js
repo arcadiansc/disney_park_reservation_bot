@@ -41,8 +41,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var axios_1 = __importDefault(require("axios"));
 var utils_1 = require("./utils");
-var node_html_parser_1 = require("node-html-parser");
 var moment_1 = __importDefault(require("moment"));
+// @ts-ignore
+var uuid = require('uuid');
 var API = /** @class */ (function () {
     function API(options) {
         this.email = "";
@@ -51,118 +52,33 @@ var API = /** @class */ (function () {
         this.startDate = "";
         this.endDate = "";
         this.userId = "";
-        this.pep_jwt_token = "";
-        this.pep_oath_token = "";
-        this.pep_oauth_refresh_token = "";
-        this.pep_oauth_refresh_token_pp = "";
-        this.sessionId = "";
         this.guests = null;
         this.selectedGuests = [];
         this.selectedParks = [];
+        this.gCaptcha = "";
+        this.correlationId = "";
+        this.conversationId = "";
+        this.apiKey = "";
+        this.accessToken = "";
+        this.refreshToken = "";
         this.email = options.email;
         this.password = options.password;
         this.date = options.date;
+        this.userId = options.userId;
+        this.accessToken = options.accessToken;
+        this.refreshToken = options.refreshToken;
+        this.correlationId = uuid.v4();
+        this.conversationId = uuid.v4();
     }
-    API.prototype.getSessionAndCsrf = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var response, headers, data, setCookie, cookie, i, root, csrfInput, rawAttributes, value, e_1;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, axios_1.default.get(utils_1.phpSessionUrl)];
-                    case 1:
-                        response = _a.sent();
-                        headers = response.headers, data = response.data;
-                        setCookie = headers["set-cookie"];
-                        cookie = "";
-                        for (i = 0; i < setCookie.length; i++) {
-                            if (setCookie[i].includes("PHP")) {
-                                cookie += setCookie[i] + "; ";
-                            }
-                        }
-                        cookie = cookie.split(";")[0];
-                        root = node_html_parser_1.parse(data);
-                        csrfInput = root.querySelector("#pep_csrf");
-                        rawAttributes = csrfInput.rawAttributes;
-                        value = rawAttributes.value;
-                        this.sessionId = cookie.split("=")[1];
-                        return [2 /*return*/, { csrf: value, cookie: cookie }];
-                    case 2:
-                        e_1 = _a.sent();
-                        throw e_1;
-                    case 3: return [2 /*return*/];
-                }
-            });
-        });
-    };
-    API.prototype.login = function (cookie, csrf) {
-        return __awaiter(this, void 0, void 0, function () {
-            var loginBody, e_2, _a, status_1, headers, cookies, i, cookie_1, value, key, initialSplit, userId, userIdHeader;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        _b.trys.push([0, 2, , 3]);
-                        loginBody = utils_1.formLoginBody(this.email, this.password, csrf);
-                        return [4 /*yield*/, axios_1.default.post(utils_1.loginUrl, loginBody, {
-                                maxRedirects: 0,
-                                headers: {
-                                    Cookie: cookie,
-                                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36",
-                                },
-                            })];
-                    case 1:
-                        _b.sent();
-                        throw new Error("No redirect. Something has changed. Create an issue.");
-                    case 2:
-                        e_2 = _b.sent();
-                        _a = e_2.response, status_1 = _a.status, headers = _a.headers;
-                        if (status_1 === 302) {
-                            cookies = headers["set-cookie"];
-                            for (i = 0; i < cookies.length; i++) {
-                                cookie_1 = cookies[i];
-                                value = cookie_1.substring(cookie_1.indexOf("=") + 1).split(";")[0];
-                                key = cookie_1.substring(0, cookie_1.indexOf("="));
-                                if (key === "SWID") {
-                                    initialSplit = cookie_1
-                                        .split(";")[0]
-                                        .replace(/{/g, "")
-                                        .replace(/}/g, "");
-                                    userId = initialSplit.split("=")[1];
-                                    this.userId = userId;
-                                }
-                                if (key === "pep_oauth_token") {
-                                    this.pep_oath_token = value;
-                                }
-                                if (key === "pep_oauth_refresh_token") {
-                                    this.pep_oauth_refresh_token = value;
-                                }
-                                if (key === "pep_oauth_refresh_token_pp") {
-                                    this.pep_oauth_refresh_token_pp = value;
-                                }
-                                if (key === "pep_jwt_token") {
-                                    this.pep_jwt_token = value;
-                                }
-                            }
-                            userIdHeader = cookies.find(function (item) {
-                                return item.includes("SWID");
-                            });
-                            if (!userIdHeader) {
-                                throw new Error("Unable to get userId");
-                            }
-                        }
-                        else {
-                            throw e_2;
-                        }
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
-                }
-            });
-        });
+    API.prototype.genericHeaders = function () {
+        var headers = {
+            authorization: "BEARER " + this.accessToken
+        };
+        return headers;
     };
     API.prototype.getAvailableDates = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var response, data, endDate, startDate, e_3;
+            var response, data, endDate, startDate, e_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -172,36 +88,32 @@ var API = /** @class */ (function () {
                         response = _a.sent();
                         data = response.data;
                         endDate = data.endDate, startDate = data.startDate;
-                        console.log("data: ", data);
-                        if (moment_1.default(startDate).isAfter(this.date)) {
+                        if (moment_1.default(startDate).isAfter(new Date(this.date))) {
                             throw new Error("Your configured date is before any available dates.");
                         }
-                        if (moment_1.default(endDate).isBefore(this.date)) {
+                        if (moment_1.default(endDate).isBefore(new Date(this.date))) {
                             throw new Error("Your configured date is after any available dates");
                         }
                         this.startDate = startDate;
                         this.endDate = endDate;
                         return [3 /*break*/, 3];
                     case 2:
-                        e_3 = _a.sent();
-                        throw e_3;
+                        e_1 = _a.sent();
+                        throw e_1;
                     case 3: return [2 /*return*/];
                 }
             });
         });
     };
-    API.prototype.formAuthCookie = function () {
-        return "pep_jwt_token=" + this.pep_jwt_token + "; pep_oauth_token=" + this.pep_oath_token + "; pep_oauth_refresh_token=" + this.pep_oauth_refresh_token + "; pep_oauth_refresh_token_pp=" + this.pep_oauth_refresh_token_pp + "; SWID={" + this.userId + "}; PHPSESSID=" + this.sessionId;
-    };
     API.prototype.getGuests = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var response, data, guests, e_4;
+            var response, data, guests, e_2;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
                         return [4 /*yield*/, axios_1.default.get(utils_1.createGuestUrl(this.userId), {
-                                headers: { Authorization: "BEARER " + this.pep_oath_token },
+                                headers: this.genericHeaders(),
                             })];
                     case 1:
                         response = _a.sent();
@@ -210,8 +122,9 @@ var API = /** @class */ (function () {
                         this.guests = guests;
                         return [3 /*break*/, 3];
                     case 2:
-                        e_4 = _a.sent();
-                        throw e_4;
+                        e_2 = _a.sent();
+                        console.log("guests error: ", e_2.response.data);
+                        throw e_2;
                     case 3: return [2 /*return*/];
                 }
             });
@@ -219,12 +132,13 @@ var API = /** @class */ (function () {
     };
     API.prototype.checkForParkAvailability = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var response, data, parks, availableParks, _loop_1, i, message, selectedParks, e_5;
+            var parksUrl, response, data, parks, availableParks, _loop_1, i, message, selectedParks, e_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 3, , 4]);
-                        return [4 /*yield*/, axios_1.default.get(utils_1.getParksUrl(this.date, this.selectedGuests), { headers: { Authorization: "BEARER " + this.pep_oath_token } })];
+                        parksUrl = utils_1.getParksUrl(this.date, this.selectedGuests);
+                        return [4 /*yield*/, axios_1.default.get(parksUrl, { headers: this.genericHeaders() })];
                     case 1:
                         response = _a.sent();
                         data = response.data;
@@ -253,8 +167,8 @@ var API = /** @class */ (function () {
                         this.selectedParks = selectedParks;
                         return [3 /*break*/, 4];
                     case 3:
-                        e_5 = _a.sent();
-                        throw e_5;
+                        e_3 = _a.sent();
+                        throw e_3;
                     case 4: return [2 /*return*/];
                 }
             });
@@ -287,16 +201,14 @@ var API = /** @class */ (function () {
     };
     API.prototype.getSegmentId = function (parkId) {
         return __awaiter(this, void 0, void 0, function () {
-            var segmentUrl, response, data, segments, firstSegent, segmentId, e_6;
+            var segmentUrl, response, data, segments, firstSegent, segmentId, e_4;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
                         segmentUrl = utils_1.formGetSegmentUrl(this.selectedGuests, this.date, parkId);
                         return [4 /*yield*/, axios_1.default.get(segmentUrl, {
-                                headers: {
-                                    Authorization: "BEARER " + this.pep_oath_token,
-                                },
+                                headers: this.genericHeaders()
                             })];
                     case 1:
                         response = _a.sent();
@@ -309,8 +221,8 @@ var API = /** @class */ (function () {
                         segmentId = firstSegent.segmentId;
                         return [2 /*return*/, segmentId];
                     case 2:
-                        e_6 = _a.sent();
-                        throw e_6;
+                        e_4 = _a.sent();
+                        throw e_4;
                     case 3: return [2 /*return*/];
                 }
             });
@@ -318,16 +230,14 @@ var API = /** @class */ (function () {
     };
     API.prototype.getOfferId = function (segmentId, parkId) {
         return __awaiter(this, void 0, void 0, function () {
-            var checkUrl, response, data, experience, offers, offerWithNoConflict, checkOfferUrl, checkOnOfferResponse, e_7;
+            var checkUrl, response, data, experience, offers, offerWithNoConflict, checkOfferUrl, checkOnOfferResponse, e_5;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 3, , 4]);
                         checkUrl = utils_1.formCheckReservationsUrl(this.selectedGuests, this.date, parkId, segmentId);
                         return [4 /*yield*/, axios_1.default.get(checkUrl, {
-                                headers: {
-                                    Authorization: "BEARER " + this.pep_oath_token,
-                                },
+                                headers: this.genericHeaders()
                             })];
                     case 1:
                         response = _a.sent();
@@ -343,9 +253,7 @@ var API = /** @class */ (function () {
                             throw new Error("All the offers have conflicts");
                         checkOfferUrl = utils_1.formCheckOfferUrl(offerWithNoConflict.id);
                         return [4 /*yield*/, axios_1.default.put(checkOfferUrl, {}, {
-                                headers: {
-                                    Authorization: "BEARER " + this.pep_oath_token,
-                                },
+                                headers: this.genericHeaders()
                             })];
                     case 2:
                         checkOnOfferResponse = _a.sent();
@@ -354,8 +262,8 @@ var API = /** @class */ (function () {
                         }
                         throw new Error("Offer is not available anymore.");
                     case 3:
-                        e_7 = _a.sent();
-                        throw e_7;
+                        e_5 = _a.sent();
+                        throw e_5;
                     case 4: return [2 /*return*/];
                 }
             });
@@ -363,17 +271,16 @@ var API = /** @class */ (function () {
     };
     API.prototype.acceptOffer = function (offerId) {
         return __awaiter(this, void 0, void 0, function () {
-            var acceptUrl, body, response, data, e_8;
+            var acceptUrl, body, response, data, e_6;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
                         acceptUrl = utils_1.formAcceptOfferUrl(this.userId);
                         body = { offerId: offerId };
+                        console.log('acceptUrl: ', acceptUrl, 'body: ', body);
                         return [4 /*yield*/, axios_1.default.post(acceptUrl, body, {
-                                headers: {
-                                    Authorization: "BEARER " + this.pep_oath_token,
-                                },
+                                headers: this.genericHeaders()
                             })];
                     case 1:
                         response = _a.sent();
@@ -382,8 +289,9 @@ var API = /** @class */ (function () {
                         process.exit(0);
                         return [3 /*break*/, 3];
                     case 2:
-                        e_8 = _a.sent();
-                        throw e_8;
+                        e_6 = _a.sent();
+                        console.log("e: ", e_6.response.data);
+                        throw e_6;
                     case 3: return [2 /*return*/];
                 }
             });

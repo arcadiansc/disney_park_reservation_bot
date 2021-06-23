@@ -2,13 +2,17 @@
 
 Made with Typescript.
 
+# Prerequisites
+
+1. Make sure to have node js installed on your machine
+2. (optional) if you would like to work on the project you will need typescript to be installed as well
+
 # Usage
 
 1. create an .env file in the directory and enter the following
-2. email
-3. password
-4. date (when you would like to go to the parks. format must be YYYY-MM-DD)
-5. run the run.sh script
+2. npm install in the root directory. Make sure puppeteer downloads and installs properly
+3. Enter email, password, and date(when you would like to go to the parks. format must be YYYY-MM-DD) in the .env file
+4. run the run.sh script
 
 
 # BUILD

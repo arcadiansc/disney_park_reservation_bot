@@ -1,7 +1,6 @@
 import axios from "axios";
 import {
   IApiOptions,
-  ISessionAndCSRF,
   IAvailableDatesResponse,
   IGuest,
   IChoice,
@@ -9,9 +8,6 @@ import {
   IOffer,
 } from "./interfaces";
 import {
-  loginUrl,
-  formLoginBody,
-  phpSessionUrl,
   availableDatesUrl,
   createGuestUrl,
   selectOptions,
@@ -22,9 +18,11 @@ import {
   formAcceptOfferUrl,
   formCheckOfferUrl,
 } from "./utils";
-import { parse } from "node-html-parser";
 import moment from "moment";
-
+import fs from 'fs';
+import exp from "constants";
+// @ts-ignore
+const uuid = require('uuid');
 export default class API {
   email: string = "";
   password: string = "";
@@ -32,110 +30,35 @@ export default class API {
   startDate: string = "";
   endDate: string = "";
   userId: string = "";
-  pep_jwt_token: string = "";
-  pep_oath_token: string = "";
-  pep_oauth_refresh_token: string = "";
-  pep_oauth_refresh_token_pp: string = "";
-  sessionId: string = "";
   guests: IGuest[] | null = null;
   selectedGuests: string[] = [];
   selectedParks: string[] = [];
+  gCaptcha: string | undefined = "";
+
+  correlationId: string = "";
+  conversationId: string = "";
+
+  apiKey: string = "";
+  accessToken: string = "";
+  refreshToken: string = "";
 
   constructor(options: IApiOptions) {
     this.email = options.email;
     this.password = options.password;
     this.date = options.date;
+    this.userId = options.userId;
+    this.accessToken = options.accessToken;
+    this.refreshToken = options.refreshToken;
+    this.correlationId = uuid.v4();
+    this.conversationId = uuid.v4();
   }
 
-  async getSessionAndCsrf(): Promise<ISessionAndCSRF> {
-    try {
-      const response = await axios.get(phpSessionUrl);
-      const { headers, data } = response;
-      const setCookie = headers["set-cookie"];
-
-      let cookie: string = "";
-
-      for (let i: number = 0; i < setCookie.length; i++) {
-        if (setCookie[i].includes("PHP")) {
-          cookie += setCookie[i] + "; ";
-        }
-      }
-
-      cookie = cookie.split(";")[0];
-
-      const root = parse(data);
-
-      const csrfInput = root.querySelector("#pep_csrf");
-      const { rawAttributes } = csrfInput;
-      const { value } = rawAttributes;
-      this.sessionId = cookie.split("=")[1];
-      return { csrf: value, cookie };
-    } catch (e) {
-      throw e;
+  genericHeaders() {
+    const headers = {
+      authorization: `BEARER ${this.accessToken}`
     }
-  }
 
-  async login(cookie: string, csrf: string): Promise<void> {
-    try {
-      const loginBody: string = formLoginBody(this.email, this.password, csrf);
-      await axios.post(loginUrl, loginBody, {
-        maxRedirects: 0,
-        headers: {
-          Cookie: cookie,
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36",
-        },
-      });
-
-      throw new Error("No redirect. Something has changed. Create an issue.");
-    } catch (e) {
-      const { status, headers } = e.response;
-      if (status === 302) {
-        // console.log("Success Login in: ", headers);
-        const cookies = headers["set-cookie"];
-
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i];
-
-          const value = cookie.substring(cookie.indexOf("=") + 1).split(";")[0];
-          const key = cookie.substring(0, cookie.indexOf("="));
-
-          if (key === "SWID") {
-            const initialSplit: string = cookie
-              .split(";")[0]
-              .replace(/{/g, "")
-              .replace(/}/g, "");
-            const userId = initialSplit.split("=")[1];
-            this.userId = userId;
-          }
-
-          if (key === "pep_oauth_token") {
-            this.pep_oath_token = value;
-          }
-
-          if (key === "pep_oauth_refresh_token") {
-            this.pep_oauth_refresh_token = value;
-          }
-
-          if (key === "pep_oauth_refresh_token_pp") {
-            this.pep_oauth_refresh_token_pp = value;
-          }
-
-          if (key === "pep_jwt_token") {
-            this.pep_jwt_token = value;
-          }
-        }
-        const userIdHeader = cookies.find((item: string) =>
-          item.includes("SWID")
-        );
-
-        if (!userIdHeader) {
-          throw new Error("Unable to get userId");
-        }
-      } else {
-        throw e;
-      }
-    }
+    return headers;
   }
 
   async getAvailableDates(): Promise<void> {
@@ -143,13 +66,12 @@ export default class API {
       const response = await axios.get(availableDatesUrl);
       const data: IAvailableDatesResponse = response.data;
       const { endDate, startDate } = data;
-      console.log("data: ", data);
 
-      if (moment(startDate).isAfter(this.date)) {
+      if (moment(startDate).isAfter(new Date(this.date))) {
         throw new Error("Your configured date is before any available dates.");
       }
 
-      if (moment(endDate).isBefore(this.date)) {
+      if (moment(endDate).isBefore(new Date(this.date))) {
         throw new Error("Your configured date is after any available dates");
       }
       this.startDate = startDate;
@@ -159,28 +81,28 @@ export default class API {
     }
   }
 
-  formAuthCookie(): string {
-    return `pep_jwt_token=${this.pep_jwt_token}; pep_oauth_token=${this.pep_oath_token}; pep_oauth_refresh_token=${this.pep_oauth_refresh_token}; pep_oauth_refresh_token_pp=${this.pep_oauth_refresh_token_pp}; SWID={${this.userId}}; PHPSESSID=${this.sessionId}`;
-  }
 
   async getGuests(): Promise<void> {
     try {
+
       const response = await axios.get(createGuestUrl(this.userId), {
-        headers: { Authorization: `BEARER ${this.pep_oath_token}` },
+        headers: this.genericHeaders(),
       });
       const { data } = response;
       const guests: IGuest[] = data.guests;
       this.guests = guests;
     } catch (e) {
+      console.log("guests error: ", e.response.data);
       throw e;
     }
   }
 
   async checkForParkAvailability() {
     try {
+      const parksUrl = getParksUrl(this.date, this.selectedGuests);
       const response = await axios.get(
-        getParksUrl(this.date, this.selectedGuests),
-        { headers: { Authorization: `BEARER ${this.pep_oath_token}` } }
+        parksUrl,
+        { headers: this.genericHeaders() }
       );
       const { data } = response;
       const { parks } = data;
@@ -248,10 +170,9 @@ export default class API {
         parkId
       );
 
+
       const response = await axios.get(segmentUrl, {
-        headers: {
-          Authorization: `BEARER ${this.pep_oath_token}`,
-        },
+        headers: this.genericHeaders()
       });
       const { data } = response;
       const { segments } = data;
@@ -276,14 +197,14 @@ export default class API {
         segmentId
       );
 
+
       const response = await axios.get(checkUrl, {
-        headers: {
-          Authorization: `BEARER ${this.pep_oath_token}`,
-        },
+        headers: this.genericHeaders()
       });
 
       const { data } = response;
       const { experience } = data;
+
 
       if (!experience)
         throw new Error("No experience available for this configuration.");
@@ -301,13 +222,12 @@ export default class API {
 
       const checkOfferUrl = formCheckOfferUrl(offerWithNoConflict.id);
 
+
       const checkOnOfferResponse = await axios.put(
         checkOfferUrl,
         {},
         {
-          headers: {
-            Authorization: `BEARER ${this.pep_oath_token}`,
-          },
+          headers: this.genericHeaders()
         }
       );
 
@@ -325,15 +245,15 @@ export default class API {
     try {
       const acceptUrl: string = formAcceptOfferUrl(this.userId);
       const body = { offerId };
+      console.log('acceptUrl: ', acceptUrl, 'body: ', body);
       const response = await axios.post(acceptUrl, body, {
-        headers: {
-          Authorization: `BEARER ${this.pep_oath_token}`,
-        },
+        headers: this.genericHeaders()
       });
       const { data } = response;
       console.log("OFFER  SUCCESSFULLY ACEPTED exiting");
       process.exit(0);
     } catch (e) {
+      console.log("e: ", e.response.data);
       throw e;
     }
   }

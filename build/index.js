@@ -42,11 +42,42 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 var api_1 = __importDefault(require("./api"));
+var Puppeteer_1 = __importDefault(require("./Puppeteer"));
+var utils_1 = require("./utils");
+function validateTokens(accessToken, userId) {
+    return __awaiter(this, void 0, void 0, function () {
+        var API, e_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    API = new api_1.default({
+                        email: "",
+                        password: "",
+                        date: "",
+                        accessToken: accessToken,
+                        refreshToken: "",
+                        userId: userId
+                    });
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, API.getGuests()];
+                case 2:
+                    _a.sent();
+                    return [2 /*return*/, true];
+                case 3:
+                    e_1 = _a.sent();
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var email, password, date, API, _a, cookie, csrf, e_1;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var email, password, date, puppet, accessToken, refreshToken, userId, tokensCached, getNewTokens, validToken, newTokens, API, e_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
                     email = process.env.email;
                     password = process.env.password;
@@ -57,35 +88,54 @@ function main() {
                     if (date === undefined) {
                         throw new Error("No date passed");
                     }
-                    API = new api_1.default({ email: email, password: password, date: date });
-                    _b.label = 1;
+                    puppet = new Puppeteer_1.default(email, password);
+                    accessToken = "";
+                    refreshToken = "";
+                    userId = "";
+                    _a.label = 1;
                 case 1:
-                    _b.trys.push([1, 9, , 10]);
-                    return [4 /*yield*/, API.getAvailableDates()];
+                    _a.trys.push([1, 9, , 10]);
+                    tokensCached = utils_1.checkForCachedTokens(email);
+                    console.log("tokensCached: ", tokensCached);
+                    getNewTokens = true;
+                    if (tokensCached && typeof tokensCached === 'object') {
+                        validToken = validateTokens(tokensCached.accessToken, tokensCached.userId);
+                        if (validToken) {
+                            accessToken = tokensCached.accessToken;
+                            refreshToken = tokensCached.refreshToken;
+                            userId = tokensCached.userId;
+                            getNewTokens = false;
+                        }
+                    }
+                    if (!getNewTokens) return [3 /*break*/, 3];
+                    return [4 /*yield*/, puppet.start(utils_1.loginUrl)];
                 case 2:
-                    _b.sent();
-                    return [4 /*yield*/, API.getSessionAndCsrf()];
+                    newTokens = _a.sent();
+                    accessToken = newTokens.accessToken;
+                    refreshToken = newTokens.refreshToken;
+                    userId = newTokens.userId;
+                    _a.label = 3;
                 case 3:
-                    _a = _b.sent(), cookie = _a.cookie, csrf = _a.csrf;
-                    return [4 /*yield*/, API.login(cookie, csrf)];
+                    API = new api_1.default({ email: email, password: password, date: date, accessToken: accessToken, refreshToken: refreshToken, userId: userId });
+                    return [4 /*yield*/, API.getAvailableDates()];
                 case 4:
-                    _b.sent();
+                    _a.sent();
                     return [4 /*yield*/, API.getGuests()];
                 case 5:
-                    _b.sent();
+                    _a.sent();
                     return [4 /*yield*/, API.askForGuestsToUse()];
                 case 6:
-                    _b.sent();
+                    _a.sent();
                     return [4 /*yield*/, API.checkForParkAvailability()];
                 case 7:
-                    _b.sent();
+                    _a.sent();
                     return [4 /*yield*/, worker(API)];
                 case 8:
-                    _b.sent();
+                    _a.sent();
                     return [3 /*break*/, 10];
                 case 9:
-                    e_1 = _b.sent();
-                    console.log(e_1.message);
+                    e_2 = _a.sent();
+                    console.log(e_2.message);
                     return [3 /*break*/, 10];
                 case 10: return [2 /*return*/];
             }
@@ -99,7 +149,7 @@ function sleep(timeout) {
 }
 function worker(API) {
     return __awaiter(this, void 0, void 0, function () {
-        var segmentResults, i, park, segmentId, i, result, offerId, e_2;
+        var segmentResults, i, park, segmentId, i, result, offerId, e_3;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -142,8 +192,8 @@ function worker(API) {
                     worker(API);
                     return [3 /*break*/, 15];
                 case 11:
-                    e_2 = _a.sent();
-                    if (!e_2.message.includes(410)) return [3 /*break*/, 13];
+                    e_3 = _a.sent();
+                    if (!e_3.message.includes(410)) return [3 /*break*/, 13];
                     console.log("There are no slots available");
                     console.log("Sleeping 5 seconds before next attempt");
                     return [4 /*yield*/, sleep(5000)];
@@ -152,7 +202,7 @@ function worker(API) {
                     worker(API);
                     return [3 /*break*/, 14];
                 case 13:
-                    console.log("Error: ", e_2.message);
+                    console.log("Error: ", e_3.message);
                     _a.label = 14;
                 case 14: return [3 /*break*/, 15];
                 case 15: return [2 /*return*/];
