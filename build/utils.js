@@ -58,11 +58,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkForCachedTokens = exports.cacheTokens = exports.selectOptions = exports.getParksUrl = exports.createGuestUrl = exports.availableDatesUrl = exports.formGetSegmentUrl = exports.formAcceptOfferUrl = exports.formCheckOfferUrl = exports.formCheckReservationsUrl = exports.refreshTokenUrl = exports.PARKS = exports.loginUrl = void 0;
 var inquirer_1 = __importDefault(require("inquirer"));
 var fs_1 = __importDefault(require("fs"));
-var moment_1 = __importDefault(require("moment"));
 exports.loginUrl = "https://disneyworld.disney.go.com/login/";
-function getCorrectDateFormat(date) {
-    return moment_1.default(new Date(date)).format('YYYY-MM-DD');
-}
 exports.PARKS = [
     { id: "80007944", name: "Magic Kingdom" },
     { id: "80007838", name: "Epcot" },
@@ -72,7 +68,7 @@ exports.PARKS = [
 exports.refreshTokenUrl = "https://disneyworld.disney.go.com/authentication/get-client-token/";
 function formCheckReservationsUrl(guests, date, parkId, segmentId) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/availability/dates/" + getCorrectDateFormat(date) + "/parks/" + parkId + "/reservations/" + segmentId + "?guestXids=" + guestString + "&conflictingEntitlementIds=&replacementEntitlementIds=";
+    return "https://disneyworld.disney.go.com/vas/api/v1/availability/dates/" + date + "/parks/" + parkId + "/reservations/" + segmentId + "?guestXids=" + guestString + "&conflictingEntitlementIds=&replacementEntitlementIds=";
 }
 exports.formCheckReservationsUrl = formCheckReservationsUrl;
 function formCheckOfferUrl(offerId) {
@@ -85,7 +81,7 @@ function formAcceptOfferUrl(userId) {
 exports.formAcceptOfferUrl = formAcceptOfferUrl;
 function formGetSegmentUrl(guests, date, parkId) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/" + getCorrectDateFormat(date) + "/parks/" + parkId + "/segments?guestXids=" + guestString;
+    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/" + date + "/parks/" + parkId + "/segments?guestXids=" + guestString;
 }
 exports.formGetSegmentUrl = formGetSegmentUrl;
 exports.availableDatesUrl = "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates";
@@ -105,10 +101,9 @@ function createGuestString(guests) {
 }
 function getParksUrl(date, guests) {
     var guestString = createGuestString(guests);
-    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/" + getCorrectDateFormat(date) + "/parks?guestXids=" + guestString;
+    return "https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/" + date + "/parks?guestXids=" + guestString;
 }
 exports.getParksUrl = getParksUrl;
-// https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/2021-06-22/parks?guestXids=F92D07DD-AF51-867D-DB0F-88C473006FFF,1C86E7DC-48C4-BE9A-2687-17AF22BB0B5E
 function selectOptions(message, choices, name) {
     return __awaiter(this, void 0, void 0, function () {
         var answer;

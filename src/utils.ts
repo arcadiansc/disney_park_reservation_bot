@@ -5,9 +5,7 @@ import moment from "moment";
 
 export const loginUrl: string = "https://disneyworld.disney.go.com/login/";
 
-function getCorrectDateFormat(date: any) {
-  return moment(new Date(date)).format('YYYY-MM-DD')
-}
+
 export const PARKS: IPark[] = [
   { id: "80007944", name: "Magic Kingdom" },
   { id: "80007838", name: "Epcot" },
@@ -25,7 +23,7 @@ export function formCheckReservationsUrl(
   segmentId: string
 ): string {
   let guestString = createGuestString(guests);
-  return `https://disneyworld.disney.go.com/vas/api/v1/availability/dates/${getCorrectDateFormat(date)}/parks/${parkId}/reservations/${segmentId}?guestXids=${guestString}&conflictingEntitlementIds=&replacementEntitlementIds=`;
+  return `https://disneyworld.disney.go.com/vas/api/v1/availability/dates/${date}/parks/${parkId}/reservations/${segmentId}?guestXids=${guestString}&conflictingEntitlementIds=&replacementEntitlementIds=`;
 }
 
 export function formCheckOfferUrl(offerId: string): string {
@@ -43,7 +41,7 @@ export function formGetSegmentUrl(
 ) {
   let guestString = createGuestString(guests);
 
-  return `https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/${getCorrectDateFormat(date)}/parks/${parkId}/segments?guestXids=${guestString}`;
+  return `https://disneyworld.disney.go.com/vas/api/v1/park-reservation/eligibility/dates/${date}/parks/${parkId}/segments?guestXids=${guestString}`;
 }
 
 
@@ -68,10 +66,9 @@ function createGuestString(guests: string[]): string {
 
 export function getParksUrl(date: string, guests: string[]): string {
   let guestString = createGuestString(guests);
-  return `https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/${getCorrectDateFormat(date)}/parks?guestXids=${guestString}`;
+  return `https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/${date}/parks?guestXids=${guestString}`;
 }
 
-// https://disneyworld.disney.go.com/vas/api/v1/park-reservation/availability/dates/2021-06-22/parks?guestXids=F92D07DD-AF51-867D-DB0F-88C473006FFF,1C86E7DC-48C4-BE9A-2687-17AF22BB0B5E
 
 export async function selectOptions(
   message: string,

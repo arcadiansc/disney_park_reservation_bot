@@ -92,7 +92,9 @@ export default class API {
       const guests: IGuest[] = data.guests;
       this.guests = guests;
     } catch (e) {
-      console.log("guests error: ", e.response.data);
+      if (e && e.response && e.response.status === 401) {
+        console.log("Tokens are expired... getting new tokens");
+      }
       throw e;
     }
   }

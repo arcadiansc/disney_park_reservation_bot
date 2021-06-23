@@ -73,6 +73,10 @@ function validateTokens(accessToken, userId) {
         });
     });
 }
+function isValidDateFormat(date) {
+    var isMatch = date.match(/....-..-../);
+    return Boolean(isMatch);
+}
 function main() {
     return __awaiter(this, void 0, void 0, function () {
         var email, password, date, puppet, accessToken, refreshToken, userId, tokensCached, getNewTokens, validToken, newTokens, API, e_2;
@@ -88,56 +92,63 @@ function main() {
                     if (date === undefined) {
                         throw new Error("No date passed");
                     }
+                    if (!isValidDateFormat(date)) {
+                        throw new Error("The date was passed in an incorrect format. Please pass the date like this YYYY-MM-DD");
+                    }
                     puppet = new Puppeteer_1.default(email, password);
                     accessToken = "";
                     refreshToken = "";
                     userId = "";
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 9, , 10]);
+                    _a.trys.push([1, 11, , 12]);
                     tokensCached = utils_1.checkForCachedTokens(email);
                     console.log("tokensCached: ", tokensCached);
                     getNewTokens = true;
-                    if (tokensCached && typeof tokensCached === 'object') {
-                        validToken = validateTokens(tokensCached.accessToken, tokensCached.userId);
-                        if (validToken) {
-                            accessToken = tokensCached.accessToken;
-                            refreshToken = tokensCached.refreshToken;
-                            userId = tokensCached.userId;
-                            getNewTokens = false;
-                        }
-                    }
-                    if (!getNewTokens) return [3 /*break*/, 3];
-                    return [4 /*yield*/, puppet.start(utils_1.loginUrl)];
+                    if (!(tokensCached && typeof tokensCached === 'object')) return [3 /*break*/, 3];
+                    return [4 /*yield*/, validateTokens(tokensCached.accessToken, tokensCached.userId)];
                 case 2:
+                    validToken = _a.sent();
+                    if (validToken) {
+                        console.log("isValidToken: ", validToken);
+                        accessToken = tokensCached.accessToken;
+                        refreshToken = tokensCached.refreshToken;
+                        userId = tokensCached.userId;
+                        getNewTokens = false;
+                    }
+                    _a.label = 3;
+                case 3:
+                    if (!getNewTokens) return [3 /*break*/, 5];
+                    return [4 /*yield*/, puppet.start(utils_1.loginUrl)];
+                case 4:
                     newTokens = _a.sent();
                     accessToken = newTokens.accessToken;
                     refreshToken = newTokens.refreshToken;
                     userId = newTokens.userId;
-                    _a.label = 3;
-                case 3:
+                    _a.label = 5;
+                case 5:
                     API = new api_1.default({ email: email, password: password, date: date, accessToken: accessToken, refreshToken: refreshToken, userId: userId });
                     return [4 /*yield*/, API.getAvailableDates()];
-                case 4:
-                    _a.sent();
-                    return [4 /*yield*/, API.getGuests()];
-                case 5:
-                    _a.sent();
-                    return [4 /*yield*/, API.askForGuestsToUse()];
                 case 6:
                     _a.sent();
-                    return [4 /*yield*/, API.checkForParkAvailability()];
+                    return [4 /*yield*/, API.getGuests()];
                 case 7:
                     _a.sent();
-                    return [4 /*yield*/, worker(API)];
+                    return [4 /*yield*/, API.askForGuestsToUse()];
                 case 8:
                     _a.sent();
-                    return [3 /*break*/, 10];
+                    return [4 /*yield*/, API.checkForParkAvailability()];
                 case 9:
+                    _a.sent();
+                    return [4 /*yield*/, worker(API)];
+                case 10:
+                    _a.sent();
+                    return [3 /*break*/, 12];
+                case 11:
                     e_2 = _a.sent();
                     console.log(e_2.message);
-                    return [3 /*break*/, 10];
-                case 10: return [2 /*return*/];
+                    return [3 /*break*/, 12];
+                case 12: return [2 /*return*/];
             }
         });
     });
@@ -210,4 +221,9 @@ function worker(API) {
         });
     });
 }
-main();
+try {
+    main();
+}
+catch (e) {
+    console.error(e.message);
+}

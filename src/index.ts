@@ -25,6 +25,11 @@ async function validateTokens(
   }
 }
 
+function isValidDateFormat(date: string) {
+  const isMatch = date.match(/....-..-../);
+  return Boolean(isMatch);
+}
+
 async function main(): Promise<void> {
   const email: string | undefined = process.env.email;
   const password: string | undefined = process.env.password;
@@ -36,6 +41,10 @@ async function main(): Promise<void> {
 
   if (date === undefined) {
     throw new Error("No date passed");
+  }
+
+  if (!isValidDateFormat(date)) {
+    throw new Error("The date was passed in an incorrect format. Please pass the date like this YYYY-MM-DD");
   }
 
 
@@ -51,8 +60,10 @@ async function main(): Promise<void> {
     let getNewTokens = true;
 
     if (tokensCached && typeof tokensCached === 'object') {
-      const validToken = validateTokens(tokensCached.accessToken, tokensCached.userId);
+      const validToken = await  validateTokens(tokensCached.accessToken, tokensCached.userId);
+
       if (validToken) {
+        console.log("isValidToken: ", validToken);
         accessToken = tokensCached.accessToken;
         refreshToken = tokensCached.refreshToken;
         userId = tokensCached.userId;
@@ -117,4 +128,8 @@ async function worker(API: any) {
   }
 }
 
-main();
+try {
+  main();
+} catch(e) {
+  console.error(e.message);
+}
