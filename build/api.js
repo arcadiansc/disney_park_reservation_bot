@@ -123,7 +123,9 @@ var API = /** @class */ (function () {
                         return [3 /*break*/, 3];
                     case 2:
                         e_2 = _a.sent();
-                        console.log("guests error: ", e_2.response.data);
+                        if (e_2 && e_2.response && e_2.response.status === 401) {
+                            console.log("Tokens are expired... getting new tokens");
+                        }
                         throw e_2;
                     case 3: return [2 /*return*/];
                 }
