@@ -9,9 +9,9 @@ Made with Typescript.
 
 # Usage
 
-1. create an .env file in the directory and enter the following
+1. create an .env file in the directory and enter the following email={email_associated_with_account} password={password_associated_with_account} date={YYYY-MM-DD}
+2. The date is when you would like to go to the parks. format must be YYYY-MM-DD
 2. npm install in the root directory. Make sure puppeteer downloads and installs properly
-3. Enter email, password, and date(when you would like to go to the parks. format must be YYYY-MM-DD) in the .env file
 4. run the run.sh script
 
 
