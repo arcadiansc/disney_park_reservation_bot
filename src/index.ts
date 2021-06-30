@@ -4,6 +4,7 @@ import apiClass from "./api";
 import { ISessionAndCSRF, IGuest, IApiOptions } from "./interfaces";
 import Puppeteer from "./Puppeteer";
 import {checkForCachedTokens, loginUrl} from "./utils";
+import {log} from "util";
 
 async function validateTokens(
   accessToken: string,
@@ -60,7 +61,8 @@ async function main(): Promise<void> {
     let getNewTokens = true;
 
     if (tokensCached && typeof tokensCached === 'object') {
-      const validToken = await  validateTokens(tokensCached.accessToken, tokensCached.userId);
+      const validToken = await  validateTokens(tokensCached.accessToken, tokensCached.userId.replace(/\n/g, ''));
+
 
       if (validToken) {
         console.log("isValidToken: ", validToken);
@@ -69,6 +71,7 @@ async function main(): Promise<void> {
         userId = tokensCached.userId;
         getNewTokens = false;
       }
+
     }
 
    if (getNewTokens) {
@@ -85,7 +88,7 @@ async function main(): Promise<void> {
     await API.askForGuestsToUse();
     await API.checkForParkAvailability();
 
-    await worker(API);
+    await worker(API, puppet, loginUrl);
   } catch (e) {
     console.log(e.message);
   }
@@ -97,7 +100,7 @@ function sleep(timeout: number): Promise<void> {
   });
 }
 
-async function worker(API: any) {
+async function worker(API: any, puppet: any, loginUrl: string): Promise<void> {
   try {
     const segmentResults = [];
 
@@ -115,15 +118,27 @@ async function worker(API: any) {
 
     console.log("Sleeping 5 seconds before next attempt");
     await sleep(5000);
-    worker(API);
+    return worker(API, puppet, loginUrl);
   } catch (e) {
     if (e.message.includes(410)) {
       console.log("There are no slots available");
       console.log("Sleeping 5 seconds before next attempt");
       await sleep(5000);
-      worker(API);
+      return worker(API, puppet, loginUrl);
     } else {
-      console.log("Error: ", e.message);
+      console.log("Some other error: ", e.message);
+      if (e && e.response && e.response.status == 401) {
+        console.log("REFRESHING TOKENS");
+        const tokens = await puppet.start(loginUrl)
+        API.accessToken = tokens.accessToken;
+        API.refreshToken = tokens.refreshToken;
+        API.userId = tokens.userId;
+
+        console.log("TOKENS REFRESHED");
+
+        return worker(API, puppet, loginUrl);
+      }
+
     }
   }
 }

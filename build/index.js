@@ -106,7 +106,7 @@ function main() {
                     console.log("tokensCached: ", tokensCached);
                     getNewTokens = true;
                     if (!(tokensCached && typeof tokensCached === 'object')) return [3 /*break*/, 3];
-                    return [4 /*yield*/, validateTokens(tokensCached.accessToken, tokensCached.userId)];
+                    return [4 /*yield*/, validateTokens(tokensCached.accessToken, tokensCached.userId.replace(/\n/g, ''))];
                 case 2:
                     validToken = _a.sent();
                     if (validToken) {
@@ -140,7 +140,7 @@ function main() {
                     return [4 /*yield*/, API.checkForParkAvailability()];
                 case 9:
                     _a.sent();
-                    return [4 /*yield*/, worker(API)];
+                    return [4 /*yield*/, worker(API, puppet, utils_1.loginUrl)];
                 case 10:
                     _a.sent();
                     return [3 /*break*/, 12];
@@ -158,13 +158,13 @@ function sleep(timeout) {
         setTimeout(function () { return resolve(); }, timeout);
     });
 }
-function worker(API) {
+function worker(API, puppet, loginUrl) {
     return __awaiter(this, void 0, void 0, function () {
-        var segmentResults, i, park, segmentId, i, result, offerId, e_3;
+        var segmentResults, i, park, segmentId, i, result, offerId, e_3, tokens;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 11, , 15]);
+                    _a.trys.push([0, 11, , 16]);
                     segmentResults = [];
                     i = 0;
                     _a.label = 1;
@@ -200,8 +200,7 @@ function worker(API) {
                     return [4 /*yield*/, sleep(5000)];
                 case 10:
                     _a.sent();
-                    worker(API);
-                    return [3 /*break*/, 15];
+                    return [2 /*return*/, worker(API, puppet, loginUrl)];
                 case 11:
                     e_3 = _a.sent();
                     if (!e_3.message.includes(410)) return [3 /*break*/, 13];
@@ -210,13 +209,21 @@ function worker(API) {
                     return [4 /*yield*/, sleep(5000)];
                 case 12:
                     _a.sent();
-                    worker(API);
-                    return [3 /*break*/, 14];
+                    return [2 /*return*/, worker(API, puppet, loginUrl)];
                 case 13:
-                    console.log("Error: ", e_3.message);
-                    _a.label = 14;
-                case 14: return [3 /*break*/, 15];
-                case 15: return [2 /*return*/];
+                    console.log("Some other error: ", e_3.message);
+                    if (!(e_3 && e_3.response && e_3.response.status == 401)) return [3 /*break*/, 15];
+                    console.log("REFRESHING TOKENS");
+                    return [4 /*yield*/, puppet.start(loginUrl)];
+                case 14:
+                    tokens = _a.sent();
+                    API.accessToken = tokens.accessToken;
+                    API.refreshToken = tokens.refreshToken;
+                    API.userId = tokens.userId;
+                    console.log("TOKENS REFRESHED");
+                    return [2 /*return*/, worker(API, puppet, loginUrl)];
+                case 15: return [3 /*break*/, 16];
+                case 16: return [2 /*return*/];
             }
         });
     });
